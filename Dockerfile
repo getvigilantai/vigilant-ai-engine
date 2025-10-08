@@ -1,20 +1,21 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18-alpine
+# Use an official Python runtime as a parent image
+FROM python:3.10-slim
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
+# Install any needed packages specified in requirements.txt
+# We are installing directly since we only have a few
+RUN pip install --no-cache-dir sqlalchemy psycopg2-binary
 
-# Install any needed packages
-RUN npm install
+# Copy the current directory contents into the container at /usr/src/app
+COPY main.py .
 
-# Bundle app source
-COPY . .
+# Make port 80 available to the world outside this container (if needed, good practice)
+# EXPOSE 80
 
-# Your app binds to port 8080
-EXPOSE 8080
+# Define environment variable
+ENV NAME World
 
-# Define the command to run your app
-CMD [ "node", "app.js" ]
+# Run main.py when the container launches
+CMD ["python", "-u", "main.py"]

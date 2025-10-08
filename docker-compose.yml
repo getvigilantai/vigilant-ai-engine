@@ -1,30 +1,43 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
-    restart: always
-    depends_on:
-      - db
-    ports:
-      - "8081:8080"
-    environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
-
   db:
-    image: postgres:14-alpine
-    restart: always
+    image: postgres:15-alpine
+    container_name: vigilant-ai-db
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - vigilant-db-data:/var/lib/postgresql/data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
     ports:
-      - "5433:5432"
+      - "5432:5432"
+    volumes:
+      # This line persists the database data across restarts
+      - postgres_data:/var/lib/postgresql/data
+      # THIS IS THE NEW LINE YOU NEED TO ADD:
+      # It mounts your local init script into the container's init directory
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer
+    container_name: vigilant-ai-adminer
+    ports:
+      - "8080:8080"
+
+  app:
+    container_name: vigilant-ai-engine-app
+    build: .
+    volumes:
+      - ./data:/mnt/data
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
 
 volumes:
-  vigilant-db-data:
+  postgres_data:
